@@ -1,0 +1,115 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    padding: 20px;
+}
+
+h2 {
+    color: #0056b3;
+    border-bottom: 2px solid #0056b3;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+#participante-interface, #moderador-interface {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0 20px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-right: 10px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#status-participante {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    color: #333;
+    font-weight: bold;
+}
+
+/* Estilos para o Moderador */
+#listas-moderador {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.fila {
+    flex: 1;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 5px solid;
+}
+
+.intervencao { border-color: #28a745; }
+.replica { border-color: #ffc107; }
+
+.pedido-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pedido-item button {
+    background-color: #dc3545;
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.tempo-espera {
+    display: block; /* Garante que fica numa nova linha ou tem espaço */
+    font-size: 0.9em;
+    margin-top: 2px;
+}
+
+.pedido-item span {
+    max-width: 80%; /* Para que o botão 'Atender' não fique muito longe */
+}
+
+.meu-pedido-item {
+    background-color: #e6f7ff; /* Um azul claro para destaque */
+    border: 1px solid #91d5ff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+.meu-pedido-item h4 {
+    margin-top: 0;
+    color: #0056b3;
+}

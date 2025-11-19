@@ -2,7 +2,7 @@
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO
 // =======================================================
 // !!! SUBSTITUIR ESTE URL PELO SEU NOVO URL DA WEB APP DO GOOGLE APPS SCRIPT !!!
-const API_URL = 'https://script.google.com/macros/s/AKfycbwT28a8DNDmGcYw9Ch3ZU6mEp6f7gPUc_drWwrfVUSzGbRqfmX4-X4MKydRS3Si0pXhoA/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbzIpGrI1528tCGtLATJubKNWjhgA1bLCv757rpUfDr-vQ0u-bGnwNftO1XIaeHdSQsvXw/exec'; 
 
 // LÊ O ID DO PEDIDO PENDENTE DIRETAMENTE DO URL (?my_id=...)
 const urlParams = new URLSearchParams(window.location.search);

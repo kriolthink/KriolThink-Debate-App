@@ -191,28 +191,36 @@ function atualizarInterfaceParticipante() {
     const cancelarBtn = document.getElementById('cancelar-btn');
     const statusDiv = document.getElementById('status-participante');
     
-    // VERIFICAÇÃO CHAVE: Sai se não estiver na página do participante
+    // VERIFICAÇÃO DE SEGURANÇA (Se não for a página do participante, sai)
     if (!cancelarBtn || !statusDiv) {
         return; 
     }
     
-    // 1. Encontrar o pedido pendente
+    // --- 1. ENCONTRAR O PEDIDO PENDENTE ---
     let meuPedido = null;
-    if (meuPedidoId) {
-        meuPedido = filaDePedidos.find(p => p.id === meuPedidoId);
+    
+    // Convertemos para string apenas para garantir a comparação
+    const idParaBuscar = meuPedidoId ? String(meuPedidoId) : null; 
+
+    if (idParaBuscar) {
+        // Usa o ID local para encontrar o objeto completo na fila de pedidos
+        meuPedido = filaDePedidos.find(p => String(p.id) === idParaBuscar); 
     }
     
     // 2. Lógica de exibição e rastreamento
     if (meuPedido) {
+        // SE CHEGOU AQUI, O PEDIDO EXISTE E PODE SER MOSTRADO
         cancelarBtn.style.display = 'block';
 
+        // Lógica para calcular a posição na fila (mantida)
         const filaDoTipo = filaDePedidos
             .filter(p => p.tipo === meuPedido.tipo)
             .sort((a, b) => a.timestamp - b.timestamp);
             
-        const posicao = filaDoTipo.findIndex(p => p.id === meuPedido.id) + 1;
+        const posicao = filaDoTipo.findIndex(p => String(p.id) === idParaBuscar) + 1;
         const totalNaFila = filaDoTipo.length;
         
+        // CONSTRUÇÃO DO HTML DA LISTAGEM DO PEDIDO (mantida)
         statusDiv.innerHTML = `
             <h4>⌛ O Seu Pedido Pendente:</h4>
             <div class="meu-pedido-item">
@@ -228,8 +236,10 @@ function atualizarInterfaceParticipante() {
         `;
         
     } else {
+        // SE CHEGOU AQUI, O PEDIDO FOI ATENDIDO OU NUNCA FOI FEITO
         cancelarBtn.style.display = 'none';
         
+        // Se o ID existia no localStorage, mas não na fila:
         if (meuPedidoId !== null) {
             statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
             meuPedidoId = null;

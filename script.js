@@ -7,8 +7,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyhAA2wkH9uW5LfSZn38ATU
 let meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
 let filaDePedidos = [];
 
-console.log("Novo ID a gravar:", novoId);
-localStorage.setItem('kriolthink_pedido_id', novoId);
+console.log("Novo ID a gravar:", '12345');
+localStorage.setItem('kriolthink_pedido_id', '12345');
 console.log("ID no localStorage:", localStorage.getItem('kriolthink_pedido_id'));
 
 

@@ -1,13 +1,13 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
+    background-color: #f4f4f9; /* Fundo cinza claro */
     color: #333;
     padding: 20px;
 }
 
 h2 {
-    color: #0056b3;
-    border-bottom: 2px solid #0056b3;
+    color: #0477bf; /* COR PRINCIPAL: Título */
+    border-bottom: 2px solid #27498c; /* COR SECUNDÁRIA: Linha divisória */
     padding-bottom: 10px;
     margin-bottom: 20px;
 }
@@ -31,8 +31,9 @@ input[type="text"] {
     box-sizing: border-box;
 }
 
+/* Botões de Ação (Intervenção, Réplica, Atualizar) */
 button {
-    background-color: #007bff;
+    background-color: #0477bf; /* COR PRINCIPAL: Fundo do botão */
     color: white;
     padding: 10px 15px;
     border: none;
@@ -44,13 +45,14 @@ button {
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: #27498c; /* COR SECUNDÁRIA: Hover do botão */
 }
 
+/* Status e Feedback (Área de Pedidos) */
 #status-participante {
     margin-top: 15px;
     padding: 10px;
-    background-color: #e9ecef;
+    background-color: #e9ecef; 
     border-radius: 4px;
     color: #333;
     font-weight: bold;
@@ -71,8 +73,9 @@ button:hover {
     border-left: 5px solid;
 }
 
-.intervencao { border-color: #28a745; }
-.replica { border-color: #ffc107; }
+/* Cores das filas do Moderador */
+.intervencao { border-color: #0477bf; } /* COR PRINCIPAL: Intervenções */
+.replica { border-color: #ffc107; }    /* Mantido Amarelo: Boa visibilidade para Réplicas (Atenção) */
 
 .pedido-item {
     background-color: #fff;
@@ -85,25 +88,27 @@ button:hover {
     align-items: center;
 }
 
+/* Botão Atender/Remover (Moderador) */
 .pedido-item button {
-    background-color: #dc3545;
+    background-color: #dc3545; /* Mantido Vermelho: Ação de Eliminar/Atender (Alerta) */
     padding: 5px 10px;
     font-size: 14px;
 }
 
 .tempo-espera {
-    display: block; /* Garante que fica numa nova linha ou tem espaço */
+    display: block; 
     font-size: 0.9em;
     margin-top: 2px;
 }
 
 .pedido-item span {
-    max-width: 80%; /* Para que o botão 'Atender' não fique muito longe */
+    max-width: 80%; 
 }
 
+/* Meu Pedido Item (Participante - Destaque) */
 .meu-pedido-item {
-    background-color: #e6f7ff; /* Um azul claro para destaque */
-    border: 1px solid #91d5ff;
+    background-color: #e6f7ff; /* Fundo claro para contraste */
+    border: 1px solid #0477bf; /* COR PRINCIPAL: Borda de destaque */
     padding: 15px;
     border-radius: 6px;
     margin-top: 10px;
@@ -111,18 +116,27 @@ button:hover {
 
 .meu-pedido-item h4 {
     margin-top: 0;
-    color: #0056b3;
+    color: #27498c; /* COR SECUNDÁRIA: Título dentro do pedido */
 }
 
+/* Logótipo */
 .logo-container {
-    text-align: center; /* Centraliza a imagem no contentor */
-    margin-bottom: 30px; /* Adiciona espaço abaixo do logótipo */
+    text-align: center; 
+    margin-bottom: 30px; 
     padding-top: 10px;
 }
 
 .logo-imagem {
-    max-width: 150px; /* Limita a largura máxima do logótipo */
-    height: auto; /* Mantém a proporção da imagem */
-    display: block; /* Garante que as margens automáticas funcionam */
-    margin: 0 auto; /* Centraliza a imagem dentro do logo-container (funciona com display: block) */
+    max-width: 150px; 
+    height: auto; 
+    display: block; 
+    margin: 0 auto; 
+}
+
+/* Novo estilo para o botão de cancelamento individual (dentro da lista) */
+.small-cancel-btn {
+    background-color: #dc3545 !important; /* Vermelho forte para indicar remoção/cancelamento */
+    padding: 5px 8px !important;
+    font-size: 13px !important;
+    margin-top: 5px;
 }

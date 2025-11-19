@@ -1,36 +1,46 @@
 // !!! SUBSTITUIR ESTE URL PELO SEU URL DA WEB APP DO GOOGLE APPS SCRIPT !!!
-const API_URL = 'https://script.google.com/macros/s/AKfycbxst-DSpHJMwmMaWGsRg-DsdLkL2KfxMRu7UTKhPWiFHw8qu5sBhRqlyNTP7HLWiJL7hg/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbw3kFHmJI3s5-AMHOl4JH-Ml6XJh_VXYIhKRFl_oT8V6ZnU6F2awAAiumOAXlUJAWU6EA/exec'; 
 
 let meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
 let filaDePedidos = [];
 
-// --- FUNÇÕES DE COMUNICAÇÃO (FETCH) ---
+/* ============================================================
+   ==========   ★★★   GET POR JSONP (SEM CORS)   ★★★   ==========
+   ============================================================ */
 
 /**
- * Lê a fila de pedidos do Google Sheets.
+ * Lê a fila de pedidos do Google Sheets usando JSONP.
+ * Isto remove completamente problemas de CORS no GitHub Pages.
  */
-async function getPedidos() {
-    try {
-        const response = await fetch(`${API_URL}?action=getPedidos`);
-        if (!response.ok) throw new Error('Falha ao ler os pedidos.');
-        const data = await response.json();
-        
-        // Converte IDs e Timestamps para número (o Apps Script devolve tudo como string)
-        filaDePedidos = data.map(p => ({
-            ...p,
-            id: String(p.id),
-            // Verifica se o timestamp existe e é um número (proteção)
-            timestamp: p.timestamp ? parseInt(p.timestamp) : 0 
-        }));
-        
-        // Atualiza ambas as interfaces
-        atualizarInterfaceParticipante();
-        atualizarInterfaceModerador();
-        
-    } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-    }
+function getPedidos() {
+    // Remove script anterior (evita múltiplas execuções duplicadas)
+    const old = document.getElementById('jsonpPedidos');
+    if (old) old.remove();
+
+    // Cria a tag <script> JSONP
+    const script = document.createElement('script');
+    script.id = 'jsonpPedidos';
+    script.src = `${API_URL}?action=getPedidos&callback=receberPedidos`;
+    document.body.appendChild(script);
 }
+
+/**
+ * Função chamada automaticamente pelo Google Apps Script via JSONP.
+ */
+function receberPedidos(data) {
+    filaDePedidos = data.map(p => ({
+        ...p,
+        id: String(p.id),
+        timestamp: p.timestamp ? parseInt(p.timestamp) : 0
+    }));
+
+    atualizarInterfaceParticipante();
+    atualizarInterfaceModerador();
+}
+
+/* ============================================================
+   ==========   ★★★   POST NORMAL (NÃO PRECISA JSONP)   ★★★   ==========
+   ============================================================ */
 
 /**
  * Envia um pedido POST para o Apps Script (Adicionar/Eliminar).
@@ -42,30 +52,28 @@ async function enviarAcao(params) {
             method: 'POST',
             body: new URLSearchParams(params)
         });
+
         const result = await response.text();
         
         if (result.startsWith('Erro')) {
-            // Lança um erro se o Google Sheet retornar um erro (ex: ID não encontrado)
             throw new Error(result);
         }
-        
-        // Após o sucesso, recarrega a fila para obter os dados mais recentes
+
+        // Atualiza fila após ação
         getPedidos();
         return true;
+
     } catch (error) {
         console.error("Erro na ação:", error);
         alert(`Ocorreu um erro ao comunicar com a base de dados: ${error.message}`);
         return false;
     }
 }
-// --------------------------------------------------------------------------
 
-// --- FUNÇÕES DO PARTICIPANTE ---
+/* ============================================================
+   ==========   ★★★   FUNÇÕES DO PARTICIPANTE   ★★★   ==========
+   ============================================================ */
 
-/**
- * Função para fazer um pedido (Intervenção ou Réplica).
- * @param {string} tipo - 'intervencao' ou 'replica'
- */
 async function fazerPedido(tipo) {
     const nomeInput = document.getElementById('nome-participante');
     const nome = nomeInput.value.trim();
@@ -78,27 +86,23 @@ async function fazerPedido(tipo) {
     }
 
     if (meuPedidoId !== null) {
-        // Verifica se o ID guardado localmente ainda está na fila (proteção)
         const isPending = filaDePedidos.some(p => p.id === meuPedidoId);
         if (isPending) {
-             document.getElementById('status-participante').innerHTML = `
+            document.getElementById('status-participante').innerHTML = `
                 ⚠️ Já tem um pedido pendente (ID: ${meuPedidoId}). Cancele o anterior se necessário.
             `;
             return;
         } else {
-            // Se não estiver na fila, limpa o ID local e continua
             meuPedidoId = null;
             localStorage.removeItem('kriolthink_pedido_id');
         }
     }
-    
-    // Se for réplica, a referência deve ser obrigatória
+
     if (tipo === 'replica' && !referencia) {
         alert("Por favor, indique a quem está a responder para a réplica.");
         return;
     }
-    
-    // Gera um ID único e os dados do pedido
+
     const novoId = Date.now().toString();
     const novoPedido = {
         action: 'addPedido',
@@ -110,11 +114,10 @@ async function fazerPedido(tipo) {
         hora: new Date().toLocaleTimeString('pt-PT')
     };
 
-    // Envia para o Google Sheets
     const sucesso = await enviarAcao(novoPedido);
 
     if (sucesso) {
-        meuPedidoId = novoId; // Guarda o novo ID
+        meuPedidoId = novoId;
         localStorage.setItem('kriolthink_pedido_id', novoId);
         atualizarInterfaceParticipante();
         document.getElementById('status-participante').innerHTML = `
@@ -124,9 +127,6 @@ async function fazerPedido(tipo) {
     }
 }
 
-/**
- * Função para cancelar o pedido atualmente pendente do participante.
- */
 async function cancelarPedido() {
     if (meuPedidoId === null) {
         document.getElementById('status-participante').innerHTML = "Não tem um pedido pendente para cancelar.";
@@ -150,25 +150,18 @@ async function cancelarPedido() {
     }
 }
 
-/**
- * Atualiza o estado visual do participante.
- */
 function atualizarInterfaceParticipante() {
     const cancelarBtn = document.getElementById('cancelar-btn');
     const statusDiv = document.getElementById('status-participante');
     
-    // 1. Encontrar o pedido pendente
     let meuPedido = null;
     if (meuPedidoId) {
         meuPedido = filaDePedidos.find(p => p.id === meuPedidoId);
     }
     
-    // 2. Lógica de exibição e rastreamento
     if (meuPedido) {
-        // Pedido pendente encontrado na fila global
         cancelarBtn.style.display = 'block';
 
-        // Determinar a posição na fila (apenas para a intervenção/réplica do próprio pedido)
         const filaDoTipo = filaDePedidos
             .filter(p => p.tipo === meuPedido.tipo)
             .sort((a, b) => a.timestamp - b.timestamp);
@@ -176,7 +169,6 @@ function atualizarInterfaceParticipante() {
         const posicao = filaDoTipo.findIndex(p => p.id === meuPedido.id) + 1;
         const totalNaFila = filaDoTipo.length;
         
-        // CONSTRUÇÃO DO HTML DA LISTAGEM DO PEDIDO
         statusDiv.innerHTML = `
             <h4>⌛ O Seu Pedido Pendente:</h4>
             <div class="meu-pedido-item">
@@ -192,10 +184,8 @@ function atualizarInterfaceParticipante() {
         `;
         
     } else {
-        // Sem pedido pendente
         cancelarBtn.style.display = 'none';
         
-        // Se o pedido existia mas foi removido pelo moderador:
         if (meuPedidoId !== null) {
             statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
             meuPedidoId = null;
@@ -206,31 +196,22 @@ function atualizarInterfaceParticipante() {
     }
 }
 
+/* ============================================================
+   ==========   ★★★   FUNÇÕES DO MODERADOR   ★★★   ==========
+   ============================================================ */
 
-// --- FUNÇÕES DO MODERADOR ---
-
-/**
- * Função para eliminar um pedido da fila (atendido ou ignorado).
- * @param {string} id - O ID único do pedido a remover.
- */
 async function eliminarPedido(id) {
     const params = {
         action: 'deletePedido',
         id: id
     };
-    
-    // Envia a ação de remoção. O getPedidos é chamado em caso de sucesso.
     await enviarAcao(params);
 }
 
-/**
- * Atualiza a interface do moderador com os pedidos mais recentes.
- */
 function atualizarInterfaceModerador() {
     const listasDiv = document.getElementById('listas-moderador');
     listasDiv.innerHTML = ''; 
 
-    // 1. Filtrar e ordenar por tipo e ordem de pedido (timestamp)
     const intervencoes = filaDePedidos
         .filter(p => p.tipo === 'intervencao')
         .sort((a, b) => a.timestamp - b.timestamp); 
@@ -239,9 +220,6 @@ function atualizarInterfaceModerador() {
         .filter(p => p.tipo === 'replica')
         .sort((a, b) => a.timestamp - b.timestamp); 
 
-    // 2. Construir as colunas
-
-    // Coluna Intervenções
     let htmlIntervencao = `
         <div class="fila intervencao">
             <h3>Intervenções (${intervencoes.length})</h3>
@@ -264,7 +242,6 @@ function atualizarInterfaceModerador() {
     }
     htmlIntervencao += '</div>';
 
-    // Coluna Réplicas
     let htmlReplica = `
         <div class="fila replica">
             <h3>Réplicas (${replicas.length})</h3>
@@ -287,15 +264,13 @@ function atualizarInterfaceModerador() {
     }
     htmlReplica += '</div>';
 
-    // 3. Inserir no HTML
     listasDiv.innerHTML = htmlIntervencao + htmlReplica;
 }
 
-// --- FUNÇÕES DE TEMPO E INICIALIZAÇÃO ---
+/* ============================================================
+   ==========   ★★★   TEMPO DE ESPERA   ★★★   ==========
+   ============================================================ */
 
-/**
- * Calcula o tempo de espera (desde o pedido).
- */
 function calcularTempoEspera() {
     const items = document.querySelectorAll('.tempo-espera');
     items.forEach(item => {
@@ -308,22 +283,20 @@ function calcularTempoEspera() {
 
         item.textContent = `(${minutos}m ${segundos}s)`;
         item.style.fontWeight = 'bold';
-        item.style.color = minutos >= 5 ? '#dc3545' : '#007bff'; // Vermelho se esperar mais de 5 minutos
+        item.style.color = minutos >= 5 ? '#dc3545' : '#007bff';
     });
 }
 
+/* ============================================================
+   ==========   ★★★   INICIALIZAÇÃO   ★★★   ==========
+   ============================================================ */
 
-// --- INICIALIZAÇÃO (SETUP) ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Carrega os pedidos ao iniciar
     getPedidos(); 
     
-    // Atualiza a fila de pedidos do Google Sheets a cada 5 segundos
     setInterval(getPedidos, 5000); 
     
-    // Só executa o cálculo do tempo de espera se estivermos na página do moderador
     if (document.getElementById('moderador-interface')) {
-        // Atualiza o tempo de espera no ecrã a cada segundo
         setInterval(calcularTempoEspera, 1000);
     }
 });

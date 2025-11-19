@@ -75,7 +75,6 @@ function handlePostResponse(response) {
 
 /**
  * Envia um pedido para o Apps Script (Adicionar/Eliminar) usando GET/JSONP.
- * O Apps Script irá processar esta URL através da função doPost.
  * @param {object} params - Parâmetros para enviar na requisição.
  */
 function enviarAcao(params) {
@@ -94,13 +93,11 @@ function enviarAcao(params) {
 }
 
 // =======================================================
-// FUNÇÕES DO PARTICIPANTE (AJUSTADAS PARA JSONP)
+// FUNÇÕES DO PARTICIPANTE (AJUSTADAS PARA JSONP E SEGURANÇA)
 // =======================================================
 
 /**
  * Função para fazer um pedido (Intervenção ou Réplica).
- * Agora chama enviarAcao() sem 'await'.
- * @param {string} tipo - 'intervencao' ou 'replica'
  */
 function fazerPedido(tipo) {
     const nomeInput = document.getElementById('nome-participante');
@@ -149,210 +146,4 @@ function fazerPedido(tipo) {
     meuPedidoId = novoId;
     localStorage.setItem('kriolthink_pedido_id', novoId);
 
-    // Atualiza a interface (a atualização da fila real virá do handlePostResponse)
-    atualizarInterfaceParticipante(); 
-}
-
-/**
- * Função para cancelar o pedido.
- * Agora chama enviarAcao() sem 'await'.
- */
-function cancelarPedido() {
-    if (meuPedidoId === null) {
-        document.getElementById('status-participante').innerHTML = "Não tem um pedido pendente para cancelar.";
-        return;
-    }
-    
-    const params = {
-        action: 'deletePedido',
-        id: meuPedidoId
-    };
-
-    // Envia a ação (assíncrono, sem 'await')
-    enviarAcao(params);
-
-    // Assume-se que o pedido foi enviado, a confirmação virá no callback
-    document.getElementById('status-participante').innerHTML = "A tentar cancelar o seu pedido...";
-}
-
-/**
- * Atualiza o estado visual do participante. (Lógica permanece a mesma)
- */
-function atualizarInterfaceParticipante() {
-    const cancelarBtn = document.getElementById('cancelar-btn');
-    const statusDiv = document.getElementById('status-participante');
-    
-    let meuPedido = null;
-    if (meuPedidoId) {
-        meuPedido = filaDePedidos.find(p => p.id === meuPedidoId);
-    }
-    
-    if (meuPedido) {
-        cancelarBtn.style.display = 'block';
-
-        const filaDoTipo = filaDePedidos
-            .filter(p => p.tipo === meuPedido.tipo)
-            .sort((a, b) => a.timestamp - b.timestamp);
-            
-        const posicao = filaDoTipo.findIndex(p => p.id === meuPedido.id) + 1;
-        const totalNaFila = filaDoTipo.length;
-        
-        statusDiv.innerHTML = `
-            <h4>⌛ O Seu Pedido Pendente:</h4>
-            <div class="meu-pedido-item">
-                <p>
-                    Tipo: <strong>${meuPedido.tipo.charAt(0).toUpperCase() + meuPedido.tipo.slice(1)}</strong> 
-                    (Feito às ${meuPedido.hora})
-                    ${meuPedido.tipo === 'replica' ? ` | Ref.: **${meuPedido.referencia}**` : ''}
-                </p>
-                <p>
-                    **Posição na fila de ${meuPedido.tipo}**: ${posicao} de ${totalNaFila}
-                </p>
-            </div>
-        `;
-        
-    } else {
-        cancelarBtn.style.display = 'none';
-        
-        if (meuPedidoId !== null) {
-            statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
-            meuPedidoId = null;
-            localStorage.removeItem('kriolthink_pedido_id');
-        } else {
-            statusDiv.innerHTML = "<h4>✅ Pronto para Fazer Pedido</h4><p>Nenhum pedido pendente.</p>";
-        }
-    }
-}
-
-
-// =======================================================
-// FUNÇÕES DO MODERADOR (AJUSTADAS PARA JSONP)
-// =======================================================
-
-/**
- * Função para eliminar um pedido da fila.
- * Agora chama enviarAcao() sem 'await'.
- * @param {string} id - O ID único do pedido a remover.
- */
-function eliminarPedido(id) {
-    const params = {
-        action: 'deletePedido',
-        id: id
-    };
-    
-    // Envia a ação de remoção (assíncrono, sem 'await')
-    enviarAcao(params);
-}
-
-/**
- * Atualiza a interface do moderador com os pedidos mais recentes. (Lógica permanece a mesma)
- */
-function atualizarInterfaceModerador() {
-    const listasDiv = document.getElementById('listas-moderador');
-    if (!listasDiv) return; // Proteção para não executar no index.html
-    
-    listasDiv.innerHTML = ''; 
-
-    // 1. Filtrar e ordenar por tipo e ordem de pedido (timestamp)
-    const intervencoes = filaDePedidos
-        .filter(p => p.tipo === 'intervencao')
-        .sort((a, b) => a.timestamp - b.timestamp); 
-
-    const replicas = filaDePedidos
-        .filter(p => p.tipo === 'replica')
-        .sort((a, b) => a.timestamp - b.timestamp); 
-
-    // 2. Construir as colunas
-
-    // Coluna Intervenções
-    let htmlIntervencao = `
-        <div class="fila intervencao">
-            <h3>Intervenções (${intervencoes.length})</h3>
-    `;
-    if (intervencoes.length === 0) {
-        htmlIntervencao += '<p>Nenhuma intervenção pendente.</p>';
-    } else {
-        intervencoes.forEach(pedido => {
-            htmlIntervencao += `
-                <div class="pedido-item">
-                    <span>
-                        <strong>${pedido.nome}</strong> 
-                        <span class="tempo-espera" data-timestamp="${pedido.timestamp}"></span> 
-                        <br><small>(${pedido.hora})</small>
-                    </span>
-                    <button onclick="eliminarPedido('${pedido.id}')">Atender/Remover</button>
-                </div>
-            `;
-        });
-    }
-    htmlIntervencao += '</div>';
-
-    // Coluna Réplicas
-    let htmlReplica = `
-        <div class="fila replica">
-            <h3>Réplicas (${replicas.length})</h3>
-    `;
-    if (replicas.length === 0) {
-        htmlReplica += '<p>Nenhuma réplica pendente.</p>';
-    } else {
-        replicas.forEach(pedido => {
-            htmlReplica += `
-                <div class="pedido-item">
-                    <span>
-                        <strong>${pedido.nome}</strong> - Resp. a **${pedido.referencia}**
-                        <span class="tempo-espera" data-timestamp="${pedido.timestamp}"></span> 
-                        <br><small>(${pedido.hora})</small>
-                    </span>
-                    <button onclick="eliminarPedido('${pedido.id}')">Atender/Remover</button>
-                </div>
-            `;
-        });
-    }
-    htmlReplica += '</div>';
-
-    // 3. Inserir no HTML
-    listasDiv.innerHTML = htmlIntervencao + htmlReplica;
-    
-    // Garante que o cálculo do tempo é chamado após o HTML ser carregado
-    calcularTempoEspera();
-}
-
-
-// =======================================================
-// FUNÇÕES DE TEMPO E INICIALIZAÇÃO
-// =======================================================
-
-/**
- * Calcula o tempo de espera (desde o pedido).
- */
-function calcularTempoEspera() {
-    const items = document.querySelectorAll('.tempo-espera');
-    items.forEach(item => {
-        const timestamp = parseInt(item.getAttribute('data-timestamp'));
-        if (isNaN(timestamp)) return;
-        
-        const tempoDecorridoMs = Date.now() - timestamp;
-        const segundos = Math.floor(tempoDecorridoMs / 1000) % 60;
-        const minutos = Math.floor(tempoDecorridoMs / (1000 * 60));
-
-        item.textContent = `(${minutos}m ${segundos}s)`;
-        item.style.fontWeight = 'bold';
-        item.style.color = minutos >= 5 ? '#dc3545' : '#007bff'; 
-    });
-}
-
-
-// --- INICIALIZAÇÃO (SETUP) ---
-document.addEventListener('DOMContentLoaded', () => {
-    // Carrega os pedidos ao iniciar
-    getPedidos(); 
-    
-    // Atualiza a fila de pedidos do Google Sheets a cada 5 segundos
-    setInterval(getPedidos, 5000); 
-    
-    // Só executa o cálculo do tempo de espera se estivermos na página do moderador
-    if (document.getElementById('moderador-interface')) {
-        // Atualiza o tempo de espera no ecrã a cada segundo
-        setInterval(calcularTempoEspera, 1000);
-    }
-});
+    // Atualiza a interface para mostrar o novo pedido pendente

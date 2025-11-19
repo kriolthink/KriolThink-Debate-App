@@ -211,6 +211,7 @@ async function eliminarPedido(id) {
 function atualizarInterfaceModerador() {
     const listasDiv = document.getElementById('listas-moderador');
     listasDiv.innerHTML = ''; 
+    if (!listasDiv) return; 
 
     const intervencoes = filaDePedidos
         .filter(p => p.tipo === 'intervencao')

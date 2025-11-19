@@ -137,15 +137,15 @@ function fazerPedido(tipo) {
     // 2. Validação de Réplica
     if (tipo === 'replica' && !referencia) {
         alert("Por favor, indique a quem está a responder para a réplica.");
-        return; 
+        return; // Sai se a réplica for inválida
     }
-    
-    // 3. Criação e Gravação do NOVO ID e Nome
+
+    // 3. Criação e Gravação do NOVO ID e Nome (SÓ SE FOR VÁLIDO)
     const novoId = Date.now().toString();
     meuPedidoId = novoId; // Variável global para rastrear o último pedido
     meuNomeParticipante = nome; // Variável global para rastrear todos os pedidos
 
-    // Gravação imediata (assumimos que o pedido será enviado)
+    // Gravação imediata na sessão
     sessionStorage.setItem('kriolthink_pedido_id', novoId);
     sessionStorage.setItem('kriolthink_nome', nome); 
 
@@ -163,15 +163,13 @@ function fazerPedido(tipo) {
     // Envia o pedido (assíncrono). A resposta chamará getPedidos()
     enviarAcao(novoPedido);
     
-    // (Opcional) Feedback visual imediato
+    // Feedback visual imediato
     document.getElementById('status-participante').innerHTML = `
         <h4>⚙️ A Enviar Pedido...</h4>
         <p>Aguarde um momento enquanto confirmamos a sua posição na fila.</p>
     `; 
-    
-    // NÃO CHAMAMOS atualizarInterfaceParticipante() AQUI,
-    // POIS ESTÁ DESATUALIZADA. SERÁ CHAMADA EM handlePedidos()
 }
+
 /**
  * Função para cancelar um pedido específico pelo seu ID (chamada pelos botões individuais).
  */
@@ -413,6 +411,34 @@ function calcularTempoEspera() {
     });
 }
 
+// =======================================================
+// FUNÇÃO DE ATUALIZAÇÃO MANUAL
+// =======================================================
+
+/**
+ * Força a atualização da lista, garantindo que o nome atual é persistido.
+ */
+function forcarAtualizacaoLista() {
+    const nomeInput = document.getElementById('nome-participante');
+    const nomeAtual = nomeInput.value.trim();
+
+    if (nomeAtual) {
+        // Se o utilizador mudou o nome, precisamos de o salvar para o rastreio
+        sessionStorage.setItem('kriolthink_nome', nomeAtual);
+        
+        // Atualiza a variável global (para ser usada em handlePedidos)
+        meuNomeParticipante = nomeAtual; 
+    }
+    
+    // Feedback visual imediato
+    document.getElementById('status-participante').innerHTML = `
+        <h4>⏱️ A Atualizar...</h4>
+        <p>A carregar os pedidos mais recentes da fila.</p>
+    `;
+
+    // Força a chamada do GET (que chamará handlePedidos)
+    getPedidos();
+}
 
 // --- INICIALIZAÇÃO (SETUP) ---
 document.addEventListener('DOMContentLoaded', () => {

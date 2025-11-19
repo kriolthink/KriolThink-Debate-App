@@ -4,6 +4,62 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbw3kFHmJI3s5-AMHOl4JH-M
 let meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
 let filaDePedidos = [];
 
+// --- FUNÇÕES DE COMUNICAÇÃO (FETCH) ---
+
+/**
+ * Lê a fila de pedidos do Google Sheets.
+ */
+async function getPedidos() {
+    try {
+        const response = await fetch(`${API_URL}?action=getPedidos`);
+        if (!response.ok) throw new Error('Falha ao ler os pedidos.');
+        const data = await response.json();
+        
+        // Converte IDs e Timestamps para número (o Apps Script devolve tudo como string)
+        filaDePedidos = data.map(p => ({
+            ...p,
+            id: String(p.id),
+            // Verifica se o timestamp existe e é um número (proteção)
+            timestamp: p.timestamp ? parseInt(p.timestamp) : 0 
+        }));
+        
+        // Atualiza ambas as interfaces
+        atualizarInterfaceParticipante();
+        atualizarInterfaceModerador();
+        
+    } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+    }
+}
+
+/**
+ * Envia um pedido POST para o Apps Script (Adicionar/Eliminar).
+ * @param {object} params - Parâmetros para enviar na requisição.
+ */
+async function enviarAcao(params) {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: new URLSearchParams(params)
+        });
+        const result = await response.text();
+        
+        if (result.startsWith('Erro')) {
+            // Lança um erro se o Google Sheet retornar um erro (ex: ID não encontrado)
+            throw new Error(result);
+        }
+        
+        // Após o sucesso, recarrega a fila para obter os dados mais recentes
+        getPedidos();
+        return true;
+    } catch (error) {
+        console.error("Erro na ação:", error);
+        alert(`Ocorreu um erro ao comunicar com a base de dados: ${error.message}`);
+        return false;
+    }
+}
+// --------------------------------------------------------------------------
+
 // --- FUNÇÕES DO PARTICIPANTE ---
 
 /**

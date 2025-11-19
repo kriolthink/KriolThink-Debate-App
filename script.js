@@ -14,20 +14,24 @@ let filaDePedidos = [];
 
 /**
  * Função de callback global para receber os dados de Leitura (GET).
+ * O Google Apps Script irá chamar esta função.
  * @param {Array<Object>} data - A lista de pedidos.
  */
 function handlePedidos(data) {
-    // Converte IDs e Timestamps para número
+    // 1. CARREGAR O ID LOCAL NO INÍCIO DO CALLBACK (Garantir que é o valor mais recente)
+    meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
+    
+    // 2. Converte IDs e Timestamps para número
     filaDePedidos = data.map(p => ({
         ...p,
         id: String(p.id),
         timestamp: p.timestamp ? parseInt(p.timestamp) : 0 
     }));
     
-    // --- LÓGICA DE RASTREIO DO PEDIDO DO PARTICIPANTE ---
+    // 3. Lógica de RASTREIO DO PEDIDO DO PARTICIPANTE (mantida)
     if (meuPedidoId) {
         // Verifica se o ID guardado localmente ainda está na fila (proteção)
-        const meuPedidoExiste = filaDePedidos.some(p => p.id === meuPedidoId);
+        const meuPedidoExiste = filaDePedidos.some(p => String(p.id) === String(meuPedidoId));
         
         if (!meuPedidoExiste) {
             // Se o pedido não estiver mais na fila (foi atendido/removido), limpa localmente.
@@ -35,9 +39,8 @@ function handlePedidos(data) {
             localStorage.removeItem('kriolthink_pedido_id');
         }
     }
-    // ---------------------------------------------------
-
-    // Atualiza ambas as interfaces
+    
+    // 4. Atualiza ambas as interfaces (Agora com meuPedidoId garantido)
     atualizarInterfaceParticipante();
     atualizarInterfaceModerador();
 

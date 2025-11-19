@@ -120,40 +120,43 @@ function fazerPedido(tipo) {
     const referenciaInput = document.getElementById('referencia-participante');
     let referencia = referenciaInput.value.trim();
 
-    // 1. Validação de nome (Se falhar, sai antes de gravar o ID)
+    // 1. Validação de nome (Se falhar, sai)
     if (!nome) {
         alert("Por favor, introduza o seu nome para fazer o pedido.");
         return;
     }
 
-    // 2. Criação e Gravação Inicial do ID (MUDANÇA CRÍTICA!)
-    const novoId = Date.now().toString();
-    meuPedidoId = novoId;
-    sessionStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata
-
-    // 3. Verifica se já existe um pedido pendente
-    if (meuPedidoId !== null) {
-        const isPending = filaDePedidos.some(p => p.id === meuPedidoId);
+    // --- MUDANÇA CRÍTICA AQUI: VALIDAR PENDÊNCIA ANTES DE GERAR NOVO ID ---
+    
+    // 2. Verifica se já existe um pedido pendente (usando o ID guardado na sessão)
+    let idGuardado = sessionStorage.getItem('kriolthink_pedido_id') || null;
+    if (idGuardado !== null) {
+        // Verifica se o ID guardado localmente ainda está na fila
+        const isPending = filaDePedidos.some(p => String(p.id) === String(idGuardado));
+        
         if (isPending) {
-             document.getElementById('status-participante').innerHTML = `
-                ⚠️ Já tem um pedido pendente! Cancele o anterior se necessário.
+            // Se já tem um pedido, notifica e não prossegue
+            document.getElementById('status-participante').innerHTML = `
+                ⚠️ Já tem um pedido pendente (ID: ${idGuardado})! Cancele o anterior se necessário.
             `;
-            // Se já tem um pedido, sai
-            return; 
+            return; // Sai da função sem gerar ou gravar um novo ID
         } else {
-            // Se não está na fila, o ID local é limpo na atualização, mas mantemos o novo para o envio
+            // Se o ID local não está na fila, o ID local é "sujo" (de um pedido antigo/atendido).
+            // Deixamos o fluxo continuar para gerar e gravar um novo ID.
         }
     }
     
-    // 4. Validação de Réplica
+    // 3. Validação de Réplica (Agora que sabemos que pode avançar)
     if (tipo === 'replica' && !referencia) {
         alert("Por favor, indique a quem está a responder para a réplica.");
-        // Se a réplica falhar, temos de limpar o ID gravado no passo 2!
-        meuPedidoId = null;
-        sessionStorage.removeItem('kriolthink_pedido_id');
-        return;
+        return; 
     }
     
+    // 4. Criação e Gravação do NOVO ID (Apenas se não havia pendente)
+    const novoId = Date.now().toString();
+    meuPedidoId = novoId; // Atualiza a variável global
+    sessionStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata do novo ID
+
     // 5. Preparação e Envio
     const novoPedido = {
         action: 'addPedido',

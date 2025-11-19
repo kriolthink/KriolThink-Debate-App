@@ -21,7 +21,8 @@ let filaDePedidos = [];
 function handlePedidos(data) {
     // 1. CARREGAR O ID LOCAL NO INÍCIO DO CALLBACK (Garantir que é o valor mais recente)
     meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
-    
+    meuNomeParticipante = sessionStorage.getItem('kriolthink_nome') || null; // <--- Carregar o nome
+
     // 2. Converte IDs e Timestamps para número
     filaDePedidos = data.map(p => ({
         ...p,
@@ -29,19 +30,25 @@ function handlePedidos(data) {
         timestamp: p.timestamp ? parseInt(p.timestamp) : 0 
     }));
     
-    // 3. Lógica de RASTREIO DO PEDIDO DO PARTICIPANTE (mantida)
-    if (meuPedidoId) {
-        // Verifica se o ID guardado localmente ainda está na fila (proteção)
-        const meuPedidoExiste = filaDePedidos.some(p => String(p.id) === String(meuPedidoId));
+    // 3. Lógica de RASTREIO DO PEDIDO DO PARTICIPANTE
+    if (meuPedidoId && meuNomeParticipante) {
+        // Verifica se O NOME ainda tem QUALQUER pedido pendente na fila
+        const temPedidoPendente = filaDePedidos.some(
+            p => p.nome.trim().toLowerCase() === meuNomeParticipante.trim().toLowerCase()
+        );
         
-        if (!meuPedidoExiste) {
-            // Se o pedido não estiver mais na fila (foi atendido/removido), limpa localmente.
+        if (!temPedidoPendente) {
+            // Se NENHUM pedido com este nome estiver na fila, limpa tudo localmente.
             meuPedidoId = null;
+            meuNomeParticipante = null;
             sessionStorage.removeItem('kriolthink_pedido_id');
+            sessionStorage.removeItem('kriolthink_nome');
+        } else {
+            // Se ainda houver pedidos, mantemos o ID/Nome para o rastreio
         }
     }
     
-    // 4. Atualiza ambas as interfaces (Agora com meuPedidoId garantido)
+    // 4. Atualiza ambas as interfaces (Agora com filaDePedidos garantidamente atualizada)
     atualizarInterfaceParticipante();
     atualizarInterfaceModerador();
 
@@ -121,47 +128,28 @@ function fazerPedido(tipo) {
     const referenciaInput = document.getElementById('referencia-participante');
     let referencia = referenciaInput.value.trim();
 
-    // 1. Validação de nome (Se falhar, sai)
+    // 1. Validação de nome
     if (!nome) {
         alert("Por favor, introduza o seu nome para fazer o pedido.");
         return;
     }
-
-    // --- MUDANÇA CRÍTICA AQUI: VALIDAR PENDÊNCIA ANTES DE GERAR NOVO ID ---
     
-    // 2. Verifica se já existe um pedido pendente (usando o ID guardado na sessão)
-    let idGuardado = sessionStorage.getItem('kriolthink_pedido_id') || null;
-    if (idGuardado !== null) {
-        // Verifica se o ID guardado localmente ainda está na fila
-        const isPending = filaDePedidos.some(p => String(p.id) === String(idGuardado));
-        
-        if (isPending) {
-            // Se já tem um pedido, notifica e não prossegue
-            document.getElementById('status-participante').innerHTML = `
-                ⚠️ Já tem um pedido pendente (ID: ${idGuardado})! Cancele o anterior se necessário.
-            `;
-            return; // Sai da função sem gerar ou gravar um novo ID
-        } else {
-            // Se o ID local não está na fila, o ID local é "sujo" (de um pedido antigo/atendido).
-            // Deixamos o fluxo continuar para gerar e gravar um novo ID.
-        }
-    }
-    
-    // 3. Validação de Réplica (Agora que sabemos que pode avançar)
+    // 2. Validação de Réplica
     if (tipo === 'replica' && !referencia) {
         alert("Por favor, indique a quem está a responder para a réplica.");
         return; 
     }
     
-    // 4. Criação e Gravação do NOVO ID (Apenas se não havia pendente)
+    // 3. Criação e Gravação do NOVO ID e Nome
     const novoId = Date.now().toString();
-    meuPedidoId = novoId; // Atualiza a variável global
-    sessionStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata do novo ID
-    // NOVO PASSO: Guardar o nome para rastreio
-    meuNomeParticipante = nome;
-    sessionStorage.setItem('kriolthink_nome', nome);
+    meuPedidoId = novoId; // Variável global para rastrear o último pedido
+    meuNomeParticipante = nome; // Variável global para rastrear todos os pedidos
 
-    // 5. Preparação e Envio
+    // Gravação imediata (assumimos que o pedido será enviado)
+    sessionStorage.setItem('kriolthink_pedido_id', novoId);
+    sessionStorage.setItem('kriolthink_nome', nome); 
+
+    // 4. Preparação e Envio
     const novoPedido = {
         action: 'addPedido',
         id: novoId,
@@ -172,13 +160,18 @@ function fazerPedido(tipo) {
         hora: new Date().toLocaleTimeString('pt-PT')
     };
 
-    // Envia o pedido (assíncrono)
+    // Envia o pedido (assíncrono). A resposta chamará getPedidos()
     enviarAcao(novoPedido);
     
-    // Atualiza a interface (será exibido o novo ID gravado)
-    atualizarInterfaceParticipante(); 
+    // (Opcional) Feedback visual imediato
+    document.getElementById('status-participante').innerHTML = `
+        <h4>⚙️ A Enviar Pedido...</h4>
+        <p>Aguarde um momento enquanto confirmamos a sua posição na fila.</p>
+    `; 
+    
+    // NÃO CHAMAMOS atualizarInterfaceParticipante() AQUI,
+    // POIS ESTÁ DESATUALIZADA. SERÁ CHAMADA EM handlePedidos()
 }
-
 /**
  * Função para cancelar um pedido específico pelo seu ID (chamada pelos botões individuais).
  */

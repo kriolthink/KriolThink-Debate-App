@@ -113,3 +113,16 @@ button:hover {
     margin-top: 0;
     color: #0056b3;
 }
+
+.logo-container {
+    text-align: center; /* Centraliza a imagem no contentor */
+    margin-bottom: 30px; /* Adiciona espaço abaixo do logótipo */
+    padding-top: 10px;
+}
+
+.logo-imagem {
+    max-width: 150px; /* Limita a largura máxima do logótipo */
+    height: auto; /* Mantém a proporção da imagem */
+    display: block; /* Garante que as margens automáticas funcionam */
+    margin: 0 auto; /* Centraliza a imagem dentro do logo-container (funciona com display: block) */
+}

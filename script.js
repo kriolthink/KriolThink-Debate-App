@@ -4,12 +4,8 @@
 // !!! SUBSTITUIR ESTE URL PELO SEU NOVO URL DA WEB APP DO GOOGLE APPS SCRIPT !!!
 const API_URL = 'https://script.google.com/macros/s/AKfycbyhAA2wkH9uW5LfSZn38ATUqxkrqFuuwI3t-ZY-Yrkc-eDa9DA3dHlBHJIlhf8GFhDjLw/exec'; 
 
-let meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
+let meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
 let filaDePedidos = [];
-
-console.log("Novo ID a gravar:", '12345');
-localStorage.setItem('kriolthink_pedido_id', '12345');
-console.log("ID no localStorage:", localStorage.getItem('kriolthink_pedido_id'));
 
 
 // =======================================================
@@ -23,7 +19,7 @@ console.log("ID no localStorage:", localStorage.getItem('kriolthink_pedido_id'))
  */
 function handlePedidos(data) {
     // 1. CARREGAR O ID LOCAL NO INÍCIO DO CALLBACK (Garantir que é o valor mais recente)
-    meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
+    meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
     
     // 2. Converte IDs e Timestamps para número
     filaDePedidos = data.map(p => ({
@@ -40,7 +36,7 @@ function handlePedidos(data) {
         if (!meuPedidoExiste) {
             // Se o pedido não estiver mais na fila (foi atendido/removido), limpa localmente.
             meuPedidoId = null;
-            localStorage.removeItem('kriolthink_pedido_id');
+            sessionStorage.removeItem('kriolthink_pedido_id');
         }
     }
     
@@ -133,7 +129,7 @@ function fazerPedido(tipo) {
     // 2. Criação e Gravação Inicial do ID (MUDANÇA CRÍTICA!)
     const novoId = Date.now().toString();
     meuPedidoId = novoId;
-    localStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata
+    sessionStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata
 
     // 3. Verifica se já existe um pedido pendente
     if (meuPedidoId !== null) {
@@ -154,7 +150,7 @@ function fazerPedido(tipo) {
         alert("Por favor, indique a quem está a responder para a réplica.");
         // Se a réplica falhar, temos de limpar o ID gravado no passo 2!
         meuPedidoId = null;
-        localStorage.removeItem('kriolthink_pedido_id');
+        sessionStorage.removeItem('kriolthink_pedido_id');
         return;
     }
     
@@ -253,11 +249,11 @@ function atualizarInterfaceParticipante() {
         // SE CHEGOU AQUI, O PEDIDO FOI ATENDIDO OU NUNCA FOI FEITO
         cancelarBtn.style.display = 'none';
         
-        // Se o ID existia no localStorage, mas não na fila:
+        // Se o ID existia no sessionStorage, mas não na fila:
         if (meuPedidoId !== null) {
             statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
             meuPedidoId = null;
-            localStorage.removeItem('kriolthink_pedido_id');
+            sessionStorage.removeItem('kriolthink_pedido_id');
         } else {
             statusDiv.innerHTML = "<h4>✅ Pronto para Fazer Pedido</h4><p>Nenhum pedido pendente.</p>";
         }

@@ -5,6 +5,7 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbxJgJ_iCFoMWZvatArBrcmfqKJWwEa74RZd_t_jQL5KEr0cC5aaAWQVUA9ntMbyyNVD8A/exec'; 
 
 let meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
+let meuNomeParticipante = sessionStorage.getItem('kriolthink_nome') || null; // NOVO: Armazenar o nome
 let filaDePedidos = [];
 
 
@@ -156,6 +157,9 @@ function fazerPedido(tipo) {
     const novoId = Date.now().toString();
     meuPedidoId = novoId; // Atualiza a variável global
     sessionStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata do novo ID
+    // NOVO PASSO: Guardar o nome para rastreio
+    meuNomeParticipante = nome;
+    sessionStorage.setItem('kriolthink_nome', nome);
 
     // 5. Preparação e Envio
     const novoPedido = {
@@ -176,7 +180,25 @@ function fazerPedido(tipo) {
 }
 
 /**
- * Função para cancelar o pedido.
+ * Função para cancelar um pedido específico pelo seu ID (chamada pelos botões individuais).
+ */
+function cancelarPedidoEspecifico(idParaRemover) {
+    if (!idParaRemover) return;
+    
+    const params = {
+        action: 'deletePedido',
+        id: idParaRemover
+    };
+
+    // Envia a ação (assíncrono)
+    enviarAcao(params);
+
+    // Feedback visual imediato
+    document.getElementById('status-participante').innerHTML = `A tentar cancelar o pedido com ID ${idParaRemover}...`;
+}
+
+/**
+ * Função para cancelar o pedido. (MANTIDA, mas agora pode ser obsoleta)
  */
 function cancelarPedido() {
     if (meuPedidoId === null) {
@@ -184,17 +206,11 @@ function cancelarPedido() {
         return;
     }
     
-    const params = {
-        action: 'deletePedido',
-        id: meuPedidoId
-    };
-
-    // Envia a ação (assíncrono, sem 'await')
-    enviarAcao(params);
-
-    // Assume-se que o pedido foi enviado, a confirmação virá no callback
-    document.getElementById('status-participante').innerHTML = "A tentar cancelar o seu pedido...";
+    // Apenas chama a função específica
+    cancelarPedidoEspecifico(meuPedidoId);
 }
+
+
 
 /**
  * Atualiza o estado visual do participante.
@@ -209,57 +225,78 @@ function atualizarInterfaceParticipante() {
         return; 
     }
     
-    // --- 1. ENCONTRAR O PEDIDO PENDENTE ---
-    let meuPedido = null;
+    // 1. CARREGAR O NOME (Garantir que é o valor mais recente)
+    // Usamos o nome guardado para filtrar todos os pedidos.
+    const nomeParaBuscar = sessionStorage.getItem('kriolthink_nome') || null;
     
-    // Convertemos para string apenas para garantir a comparação
-    const idParaBuscar = meuPedidoId ? String(meuPedidoId) : null; 
-
-    if (idParaBuscar) {
-        // Usa o ID local para encontrar o objeto completo na fila de pedidos
-        meuPedido = filaDePedidos.find(p => String(p.id) === idParaBuscar); 
+    // Sai se não houver um nome guardado para rastrear
+    if (!nomeParaBuscar) {
+        cancelarBtn.style.display = 'none';
+        statusDiv.innerHTML = "<h4>✅ Pronto para Fazer Pedido</h4><p>Nenhum pedido pendente.</p>";
+        // Limpar o meuPedidoId e o nome caso tenham ficado "sujos"
+        meuPedidoId = null;
+        sessionStorage.removeItem('kriolthink_pedido_id');
+        return;
     }
     
-    // 2. Lógica de exibição e rastreamento
-    if (meuPedido) {
-        // SE CHEGOU AQUI, O PEDIDO EXISTE E PODE SER MOSTRADO
-        cancelarBtn.style.display = 'block';
-
-        // Lógica para calcular a posição na fila (mantida)
-        const filaDoTipo = filaDePedidos
-            .filter(p => p.tipo === meuPedido.tipo)
-            .sort((a, b) => a.timestamp - b.timestamp);
-            
-        const posicao = filaDoTipo.findIndex(p => String(p.id) === idParaBuscar) + 1;
-        const totalNaFila = filaDoTipo.length;
+    // 2. ENCONTRAR TODOS OS PEDIDOS PENDENTES DO PARTICIPANTE
+    const meusPedidos = filaDePedidos
+        // Filtra pelo nome e ordena pelo timestamp para a ordem correta
+        .filter(p => p.nome.trim().toLowerCase() === nomeParaBuscar.trim().toLowerCase()) 
+        .sort((a, b) => a.timestamp - b.timestamp);
+    
+    // 3. Lógica de exibição e rastreamento
+    if (meusPedidos.length > 0) {
+        // Se há pedidos pendentes, mostramos a lista
+        let htmlPedidos = `<h4>⌛ Os Seus Pedidos Pendentes (${meusPedidos.length}):</h4>`;
         
-        // CONSTRUÇÃO DO HTML DA LISTAGEM DO PEDIDO (mantida)
-        statusDiv.innerHTML = `
-            <h4>⌛ O Seu Pedido Pendente:</h4>
-            <div class="meu-pedido-item">
-                <p>
-                    Tipo: <strong>${meuPedido.tipo.charAt(0).toUpperCase() + meuPedido.tipo.slice(1)}</strong> 
-                    (Feito às ${meuPedido.hora})
-                    ${meuPedido.tipo === 'replica' ? ` | Ref.: **${meuPedido.referencia}**` : ''}
-                </p>
-                <p>
-                    **Posição na fila de ${meuPedido.tipo}**: ${posicao} de ${totalNaFila}
-                </p>
-            </div>
-        `;
+        meusPedidos.forEach((pedido, index) => {
+            // Lógica para calcular a posição na fila (mantida, mas aplicada por tipo)
+            const filaDoTipo = filaDePedidos
+                .filter(p => p.tipo === pedido.tipo)
+                .sort((a, b) => a.timestamp - b.timestamp);
+                
+            const posicao = filaDoTipo.findIndex(p => String(p.id) === String(pedido.id)) + 1;
+            const totalNaFila = filaDoTipo.length;
+            
+            // CONSTRUÇÃO DO HTML DA LISTAGEM DE CADA PEDIDO
+            htmlPedidos += `
+                <div class="meu-pedido-item">
+                    <h5>${index + 1}. ${pedido.tipo.charAt(0).toUpperCase() + pedido.tipo.slice(1)}</h5>
+                    <p>
+                        ${pedido.tipo === 'replica' ? `Ref.: **${pedido.referencia}** | ` : ''}
+                        Feito às ${pedido.hora}
+                    </p>
+                    <p>
+                        **Posição na fila de ${pedido.tipo}**: ${posicao} de ${totalNaFila}
+                    </p>
+                    <button class="small-cancel-btn" onclick="cancelarPedidoEspecifico('${pedido.id}')">
+                        Cancelar Este Pedido
+                    </button>
+                </div>
+                <hr style="border-top: 1px solid #eee; margin: 10px 0;">
+            `;
+            
+            // ATUALIZAÇÃO DO meuPedidoId: Guardamos o ID do PRIMEIRO pedido (mais antigo)
+            // para que o botão de cancelar global possa ser usado (se necessário).
+            if (index === 0) {
+                 meuPedidoId = String(pedido.id);
+            }
+        });
+        
+        statusDiv.innerHTML = htmlPedidos;
+        cancelarBtn.style.display = 'none'; // Escondemos o botão global para usar o individual
         
     } else {
-        // SE CHEGOU AQUI, O PEDIDO FOI ATENDIDO OU NUNCA FOI FEITO
+        // SE CHEGOU AQUI, O NOME EXISTE, MAS NÃO HÁ PEDIDOS PENDENTES
         cancelarBtn.style.display = 'none';
         
-        // Se o ID existia no sessionStorage, mas não na fila:
-        if (meuPedidoId !== null) {
-            statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
-            meuPedidoId = null;
-            sessionStorage.removeItem('kriolthink_pedido_id');
-        } else {
-            statusDiv.innerHTML = "<h4>✅ Pronto para Fazer Pedido</h4><p>Nenhum pedido pendente.</p>";
-        }
+        // Limpar o ID e o Nome local, pois todos os pedidos foram atendidos
+        statusDiv.innerHTML = "<h4>☑️ Pedidos Concluídos</h4><p>Todos os seus pedidos foram atendidos ou removidos. Pode fazer um novo pedido.</p>";
+        meuPedidoId = null;
+        meuNomeParticipante = null;
+        sessionStorage.removeItem('kriolthink_pedido_id');
+        sessionStorage.removeItem('kriolthink_nome');
     }
 }
 

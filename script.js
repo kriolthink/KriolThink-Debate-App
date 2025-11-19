@@ -1,5 +1,5 @@
 // !!! SUBSTITUIR ESTE URL PELO SEU URL DA WEB APP DO GOOGLE APPS SCRIPT !!!
-const API_URL = 'https://script.google.com/macros/s/AKfycbzTZ_aCdnXFQl7v1mhpcOJQyJ0-GZ9tRWHZYriiV8IRlEof9sjXTwnN6odpaxGIOTPj8A/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbxCSMTHbT1pCtfLK0WsQ4UuJ9f2XzL-GR4E_ag7wbOFyzgn5z7c1mD9sBwRqcAkWILiWQ/exec'; 
 
 let meuPedidoId = localStorage.getItem('kriolthink_pedido_id') || null;
 let filaDePedidos = [];

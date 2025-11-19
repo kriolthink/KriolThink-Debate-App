@@ -117,30 +117,41 @@ function fazerPedido(tipo) {
     const referenciaInput = document.getElementById('referencia-participante');
     let referencia = referenciaInput.value.trim();
 
+    // 1. Validação de nome (Se falhar, sai antes de gravar o ID)
     if (!nome) {
         alert("Por favor, introduza o seu nome para fazer o pedido.");
         return;
     }
 
+    // 2. Criação e Gravação Inicial do ID (MUDANÇA CRÍTICA!)
+    const novoId = Date.now().toString();
+    meuPedidoId = novoId;
+    localStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata
+
+    // 3. Verifica se já existe um pedido pendente
     if (meuPedidoId !== null) {
         const isPending = filaDePedidos.some(p => p.id === meuPedidoId);
         if (isPending) {
              document.getElementById('status-participante').innerHTML = `
                 ⚠️ Já tem um pedido pendente! Cancele o anterior se necessário.
             `;
-            return;
+            // Se já tem um pedido, sai
+            return; 
         } else {
-            meuPedidoId = null;
-            localStorage.removeItem('kriolthink_pedido_id');
+            // Se não está na fila, o ID local é limpo na atualização, mas mantemos o novo para o envio
         }
     }
     
+    // 4. Validação de Réplica
     if (tipo === 'replica' && !referencia) {
         alert("Por favor, indique a quem está a responder para a réplica.");
+        // Se a réplica falhar, temos de limpar o ID gravado no passo 2!
+        meuPedidoId = null;
+        localStorage.removeItem('kriolthink_pedido_id');
         return;
     }
     
-    const novoId = Date.now().toString();
+    // 5. Preparação e Envio
     const novoPedido = {
         action: 'addPedido',
         id: novoId,
@@ -151,14 +162,10 @@ function fazerPedido(tipo) {
         hora: new Date().toLocaleTimeString('pt-PT')
     };
 
-    // Envia o pedido (assíncrono, sem 'await')
+    // Envia o pedido (assíncrono)
     enviarAcao(novoPedido);
     
-    // Assume-se que o pedido foi enviado e guarda-se o ID localmente
-    meuPedidoId = novoId;
-    localStorage.setItem('kriolthink_pedido_id', novoId);
-
-    // Atualiza a interface para mostrar o novo pedido pendente
+    // Atualiza a interface (será exibido o novo ID gravado)
     atualizarInterfaceParticipante(); 
 }
 

@@ -2,12 +2,9 @@
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO
 // =======================================================
 // !!! SUBSTITUIR ESTE URL PELO SEU NOVO URL DA WEB APP DO GOOGLE APPS SCRIPT !!!
-const API_URL = 'https://script.google.com/macros/s/AKfycbzsbtY8Bgq-6m0ZBeZxa_JKIlt8WXxZoWJlz23ECSp0On5hmDsiaQC9-hDK1n1jMGjHCQ/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbyhAA2wkH9uW5LfSZn38ATUqxkrqFuuwI3t-ZY-Yrkc-eDa9DA3dHlBHJIlhf8GFhDjLw/exec'; 
 
-// LÊ O ID DO PEDIDO PENDENTE DIRETAMENTE DO URL (?my_id=...)
-const urlParams = new URLSearchParams(window.location.search);
-let meuPedidoId = urlParams.get('my_id') || null; 
-
+let meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
 let filaDePedidos = [];
 
 
@@ -21,27 +18,29 @@ let filaDePedidos = [];
  * @param {Array<Object>} data - A lista de pedidos.
  */
 function handlePedidos(data) {
-    // 1. Converte IDs e Timestamps para número
+    // 1. CARREGAR O ID LOCAL NO INÍCIO DO CALLBACK (Garantir que é o valor mais recente)
+    meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
+    
+    // 2. Converte IDs e Timestamps para número
     filaDePedidos = data.map(p => ({
         ...p,
         id: String(p.id),
         timestamp: p.timestamp ? parseInt(p.timestamp) : 0 
     }));
     
-    // 2. Lógica de RASTREIO DO PEDIDO DO PARTICIPANTE (Baseado no URL)
+    // 3. Lógica de RASTREIO DO PEDIDO DO PARTICIPANTE (mantida)
     if (meuPedidoId) {
-        // Verifica se o ID do URL ainda existe na fila
+        // Verifica se o ID guardado localmente ainda está na fila (proteção)
         const meuPedidoExiste = filaDePedidos.some(p => String(p.id) === String(meuPedidoId));
         
         if (!meuPedidoExiste) {
-            // Se o pedido não estiver mais na fila (foi atendido/removido), limpa o URL
+            // Se o pedido não estiver mais na fila (foi atendido/removido), limpa localmente.
             meuPedidoId = null;
-            // Redireciona para o URL base sem o my_id (limpeza automática)
-            window.history.pushState({}, '', 'index.html'); 
+            sessionStorage.removeItem('kriolthink_pedido_id');
         }
     }
     
-    // 3. Atualiza ambas as interfaces
+    // 4. Atualiza ambas as interfaces (Agora com meuPedidoId garantido)
     atualizarInterfaceParticipante();
     atualizarInterfaceModerador();
 
@@ -56,12 +55,15 @@ function handlePedidos(data) {
  * Lê a fila de pedidos do Google Sheets usando JSONP.
  */
 function getPedidos() {
+    // O nome da função callback (handlePedidos) tem que estar no URL
     const url = `${API_URL}?action=getPedidos&callback=handlePedidos`; 
     
+    // Cria e injeta o elemento script no documento
     const script = document.createElement('script');
     script.src = url;
     script.id = 'jsonpScript';
     
+    // Anexa o script ao corpo para iniciar o pedido
     document.body.appendChild(script);
 }
 
@@ -92,17 +94,21 @@ function handlePostResponse(response) {
  */
 function enviarAcao(params) {
     const queryParams = new URLSearchParams(params).toString();
+    
+    // Usamos o método GET/JSONP e enviamos os parâmetros da POST na URL
     const url = `${API_URL}?${queryParams}&callback=handlePostResponse`; 
     
+    // Cria e injeta o elemento script no documento
     const script = document.createElement('script');
     script.src = url;
     script.id = 'postScript';
     
+    // Anexa o script ao corpo para iniciar o pedido
     document.body.appendChild(script);
 }
 
 // =======================================================
-// FUNÇÕES DO PARTICIPANTE (AJUSTADAS PARA URL)
+// FUNÇÕES DO PARTICIPANTE (AJUSTADAS PARA JSONP E SEGURANÇA)
 // =======================================================
 
 /**
@@ -114,25 +120,41 @@ function fazerPedido(tipo) {
     const referenciaInput = document.getElementById('referencia-participante');
     let referencia = referenciaInput.value.trim();
 
+    // 1. Validação de nome (Se falhar, sai antes de gravar o ID)
     if (!nome) {
         alert("Por favor, introduza o seu nome para fazer o pedido.");
         return;
     }
 
-    // Prevenção de múltiplos pedidos (baseada na fila atual)
-    if (filaDePedidos.some(p => String(p.id) === String(meuPedidoId))) {
-         document.getElementById('status-participante').innerHTML = `
-            ⚠️ Já tem um pedido pendente! Cancele o anterior se necessário.
-        `;
-        return;
+    // 2. Criação e Gravação Inicial do ID (MUDANÇA CRÍTICA!)
+    const novoId = Date.now().toString();
+    meuPedidoId = novoId;
+    sessionStorage.setItem('kriolthink_pedido_id', novoId); // Gravação imediata
+
+    // 3. Verifica se já existe um pedido pendente
+    if (meuPedidoId !== null) {
+        const isPending = filaDePedidos.some(p => p.id === meuPedidoId);
+        if (isPending) {
+             document.getElementById('status-participante').innerHTML = `
+                ⚠️ Já tem um pedido pendente! Cancele o anterior se necessário.
+            `;
+            // Se já tem um pedido, sai
+            return; 
+        } else {
+            // Se não está na fila, o ID local é limpo na atualização, mas mantemos o novo para o envio
+        }
     }
     
+    // 4. Validação de Réplica
     if (tipo === 'replica' && !referencia) {
         alert("Por favor, indique a quem está a responder para a réplica.");
+        // Se a réplica falhar, temos de limpar o ID gravado no passo 2!
+        meuPedidoId = null;
+        sessionStorage.removeItem('kriolthink_pedido_id');
         return;
     }
     
-    const novoId = Date.now().toString();
+    // 5. Preparação e Envio
     const novoPedido = {
         action: 'addPedido',
         id: novoId,
@@ -146,15 +168,15 @@ function fazerPedido(tipo) {
     // Envia o pedido (assíncrono)
     enviarAcao(novoPedido);
     
-    // REDIRECIONAMENTO CRÍTICO: Anexa o ID do pedido à URL para persistência
-    window.location.href = `index.html?my_id=${novoId}`;
+    // Atualiza a interface (será exibido o novo ID gravado)
+    atualizarInterfaceParticipante(); 
 }
 
 /**
  * Função para cancelar o pedido.
  */
 function cancelarPedido() {
-    if (!meuPedidoId) {
+    if (meuPedidoId === null) {
         document.getElementById('status-participante').innerHTML = "Não tem um pedido pendente para cancelar.";
         return;
     }
@@ -164,37 +186,43 @@ function cancelarPedido() {
         id: meuPedidoId
     };
 
-    // Envia a ação de remoção
+    // Envia a ação (assíncrono, sem 'await')
     enviarAcao(params);
-    
-    // Após o envio, redireciona para a página base (limpa o URL)
-    window.location.href = 'index.html'; 
+
+    // Assume-se que o pedido foi enviado, a confirmação virá no callback
+    document.getElementById('status-participante').innerHTML = "A tentar cancelar o seu pedido...";
 }
 
 /**
  * Atualiza o estado visual do participante.
+ * INCLUI BLOQUEIO: Só executa se o elemento existir (index.html).
  */
 function atualizarInterfaceParticipante() {
     const cancelarBtn = document.getElementById('cancelar-btn');
     const statusDiv = document.getElementById('status-participante');
     
-    // Sai se não estiver na página do participante
+    // VERIFICAÇÃO DE SEGURANÇA (Se não for a página do participante, sai)
     if (!cancelarBtn || !statusDiv) {
         return; 
     }
     
-    // 1. Encontrar o pedido pendente (baseado no meuPedidoId lido do URL)
+    // --- 1. ENCONTRAR O PEDIDO PENDENTE ---
     let meuPedido = null;
+    
+    // Convertemos para string apenas para garantir a comparação
     const idParaBuscar = meuPedidoId ? String(meuPedidoId) : null; 
 
     if (idParaBuscar) {
+        // Usa o ID local para encontrar o objeto completo na fila de pedidos
         meuPedido = filaDePedidos.find(p => String(p.id) === idParaBuscar); 
     }
     
     // 2. Lógica de exibição e rastreamento
     if (meuPedido) {
+        // SE CHEGOU AQUI, O PEDIDO EXISTE E PODE SER MOSTRADO
         cancelarBtn.style.display = 'block';
 
+        // Lógica para calcular a posição na fila (mantida)
         const filaDoTipo = filaDePedidos
             .filter(p => p.tipo === meuPedido.tipo)
             .sort((a, b) => a.timestamp - b.timestamp);
@@ -202,6 +230,7 @@ function atualizarInterfaceParticipante() {
         const posicao = filaDoTipo.findIndex(p => String(p.id) === idParaBuscar) + 1;
         const totalNaFila = filaDoTipo.length;
         
+        // CONSTRUÇÃO DO HTML DA LISTAGEM DO PEDIDO (mantida)
         statusDiv.innerHTML = `
             <h4>⌛ O Seu Pedido Pendente:</h4>
             <div class="meu-pedido-item">
@@ -217,12 +246,14 @@ function atualizarInterfaceParticipante() {
         `;
         
     } else {
+        // SE CHEGOU AQUI, O PEDIDO FOI ATENDIDO OU NUNCA FOI FEITO
         cancelarBtn.style.display = 'none';
         
-        // Se o ID estava no URL mas não está na fila do Sheets, limpamos o estado
+        // Se o ID existia no sessionStorage, mas não na fila:
         if (meuPedidoId !== null) {
-             statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
-             // O redirecionamento na função handlePedidos já faz a limpeza da URL
+            statusDiv.innerHTML = "<h4>☑️ Pedido Concluído</h4><p>O seu pedido foi atendido ou removido pelo moderador. Pode fazer um novo pedido.</p>";
+            meuPedidoId = null;
+            sessionStorage.removeItem('kriolthink_pedido_id');
         } else {
             statusDiv.innerHTML = "<h4>✅ Pronto para Fazer Pedido</h4><p>Nenhum pedido pendente.</p>";
         }
@@ -243,16 +274,18 @@ function eliminarPedido(id) {
         id: id
     };
     
+    // Envia a ação de remoção (assíncrono, sem 'await')
     enviarAcao(params);
 }
 
 /**
  * Atualiza a interface do moderador com os pedidos mais recentes.
+ * INCLUI BLOQUEIO: Só executa se o elemento existir (moderador.html).
  */
 function atualizarInterfaceModerador() {
     const listasDiv = document.getElementById('listas-moderador');
     
-    // Sai se não estiver na página do moderador
+    // VERIFICAÇÃO CHAVE: Sai se não estiver na página do moderador
     if (!listasDiv) {
         return; 
     }
@@ -269,6 +302,7 @@ function atualizarInterfaceModerador() {
         .sort((a, b) => a.timestamp - b.timestamp); 
 
     // 2. Construir as colunas
+
     // Coluna Intervenções
     let htmlIntervencao = `
         <div class="fila intervencao">
@@ -318,6 +352,7 @@ function atualizarInterfaceModerador() {
     // 3. Inserir no HTML
     listasDiv.innerHTML = htmlIntervencao + htmlReplica;
     
+    // Garante que o cálculo do tempo é chamado após o HTML ser carregado
     calcularTempoEspera();
 }
 

@@ -23,17 +23,30 @@
     <div class="logo-container">
         <img src="kt_logo.png" alt="Logótipo Kriol Think" class="logo-imagem">
     </div>
+
     <div id="moderador-interface">
-        <h2>🎙️ Painel do Moderador 🔒</h2>
-        <p>Utilize este painel para monitorizar e gerir os pedidos de palavra.</p>
         
-        <div id="listas-moderador">
-            <p>A carregar pedidos...</p>
+        <div id="login-screen">
+            <h2>🔒 Acesso Restrito</h2>
+            <p>Por favor, insira a senha do Moderador para aceder ao painel:</p>
+            <input type="password" id="senha-input" placeholder="Senha">
+            <button onclick="verificarSenha()">Entrar</button>
+            <p id="mensagem-erro" style="color: red; margin-top: 10px;"></p>
         </div>
-        
-        <p style="margin-top: 20px; font-size: 0.9em;">
-            <a href="index.html">Voltar para a Página de Pedidos (Participante)</a>
-        </p>
+
+        <div id="painel-conteudo" style="display:none;">
+            <h2>🎙️ Painel do Moderador 🔒</h2>
+            <p>Utilize este painel para monitorizar e gerir os pedidos de palavra.</p>
+            
+            <div id="listas-moderador">
+                <p>A carregar pedidos...</p>
+            </div>
+            
+            <p style="margin-top: 20px; font-size: 0.9em;">
+                 <a href="index.html">Voltar para a Página de Pedidos (Participante)</a> | 
+                 <button onclick="logoutModerador()" style="background-color: #dc3545;">Terminar Sessão</button>
+            </p>
+        </div>
     </div>
 
     <script src="script.js"></script> 

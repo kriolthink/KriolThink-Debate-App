@@ -2,7 +2,7 @@
 // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO
 // =======================================================
 // !!! SUBSTITUIR ESTE URL PELO SEU NOVO URL DA WEB APP DO GOOGLE APPS SCRIPT !!!
-const API_URL = 'https://script.google.com/macros/s/AKfycbxJgJ_iCFoMWZvatArBrcmfqKJWwEa74RZd_t_jQL5KEr0cC5aaAWQVUA9ntMbyyNVD8A/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbwSLy6GarpYk47D38XPr1n6x5XZV1WUHWpWNFKbR06sb1s-PxaAAVht98Mmo-ISzXHg_Q/exec'; 
 
 let meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
 let meuNomeParticipante = sessionStorage.getItem('kriolthink_nome') || null; // NOVO: Armazenar o nome

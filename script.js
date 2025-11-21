@@ -8,6 +8,8 @@ let meuPedidoId = sessionStorage.getItem('kriolthink_pedido_id') || null;
 let meuNomeParticipante = sessionStorage.getItem('kriolthink_nome') || null; // NOVO: Armazenar o nome
 let filaDePedidos = [];
 
+const SENHA_MODERADOR = "kt2025";
+
 
 // =======================================================
 // FUNÇÕES DE COMUNICAÇÃO (JSONP)
@@ -387,6 +389,57 @@ function atualizarInterfaceModerador() {
     calcularTempoEspera();
 }
 
+// --- FUNÇÕES DE SEGURANÇA E LOGIN ---
+
+/**
+ * Verifica se o moderador já está logado na sessão.
+ */
+function checkLogin() {
+    // Se o marcador estiver na sessionStorage, mostra o painel.
+    if (sessionStorage.getItem('moderador_logado') === 'true') {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('painel-conteudo').style.display = 'block';
+        
+        // Chamamos a atualização manual para carregar os dados
+        atualizarInterfaceModerador(); 
+        
+        // Retorna verdadeiro para que o código de inicialização continue a atualizar a fila
+        return true; 
+    }
+    return false;
+}
+
+/**
+ * Lida com a tentativa de login.
+ */
+function verificarSenha() {
+    const input = document.getElementById('senha-input');
+    const erro = document.getElementById('mensagem-erro');
+    
+    if (input.value === SENHA_MODERADOR) {
+        // Senha correta: Esconde o login, mostra o painel, guarda o marcador.
+        sessionStorage.setItem('moderador_logado', 'true');
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('painel-conteudo').style.display = 'block';
+        
+        // Inicia o carregamento dos dados do moderador
+        getPedidos(); 
+    } else {
+        erro.textContent = "Senha incorreta. Tente novamente.";
+        input.value = "";
+    }
+}
+
+/**
+ * Termina a sessão do moderador.
+ */
+function logoutModerador() {
+    sessionStorage.removeItem('moderador_logado');
+    alert("Sessão terminada. Irá ser redirecionado para a tela de login.");
+    // Força o recarregamento da página para mostrar a tela de login
+    window.location.reload(); 
+}
+
 
 // =======================================================
 // FUNÇÕES DE TEMPO E INICIALIZAÇÃO
@@ -442,15 +495,20 @@ function forcarAtualizacaoLista() {
 
 // --- INICIALIZAÇÃO (SETUP) ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Carrega os pedidos ao iniciar
-    getPedidos(); 
-    
-    // Atualiza a fila de pedidos do Google Sheets a cada 5 segundos
-    setInterval(getPedidos, 5000); 
-    
-    // Só executa o cálculo do tempo de espera se estivermos na página do moderador
+    // Verifica se estamos na página do moderador
     if (document.getElementById('moderador-interface')) {
-        // Atualiza o tempo de espera no ecrã a cada segundo
-        setInterval(calcularTempoEspera, 1000);
+        // Se estivermos no painel do moderador, tentamos o login
+        const estaLogado = checkLogin();
+
+        if (estaLogado) {
+            // Se já estiver logado, inicia a atualização automática (que só corre se o painel estiver visível)
+            setInterval(getPedidos, 5000);
+            setInterval(calcularTempoEspera, 1000);
+        }
+        // Nota: Se não estiver logado, as chamadas setInterval são omitidas
+    } else {
+        // Lógica original para o participante
+        getPedidos();
+        setInterval(getPedidos, 5000);
     }
 });
